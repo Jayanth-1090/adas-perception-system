@@ -1,0 +1,32 @@
+{
+  "scene": "default",
+  "description": "Urban intersection — pedestrian + vehicle",
+  "update_rate_hz": 10,
+  "sensors": {
+    "camera": { "enabled": true, "range_m": 80, "fov_deg": 120 },
+    "radar":  { "enabled": true, "range_m": 150, "fov_deg": 60 },
+    "ultrasonic": { "enabled": true, "range_m": 5, "fov_deg": 180 }
+  },
+  "objects": [
+    {
+      "id": 1,
+      "label": "pedestrian",
+      "initial_x": 2.5,
+      "initial_y": 30.0,
+      "vx": 0.0,
+      "vy": -1.2,
+      "width": 0.6,
+      "length": 0.4
+    },
+    {
+      "id": 2,
+      "label": "vehicle",
+      "initial_x": -1.0,
+      "initial_y": 60.0,
+      "vx": 0.5,
+      "vy": -8.0,
+      "width": 2.0,
+      "length": 4.5
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+build/
+vcpkg_installed/
+logs/*.log
+.cache/
+*.o
+*.a
+node_modules/
+frontend/.next/
+.env
+yolov8n.pt
+venv/

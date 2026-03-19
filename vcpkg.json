@@ -1,0 +1,10 @@
+{
+  "name": "adas-perception-simulator",
+  "version": "0.1.0",
+  "dependencies": [
+    "spdlog",
+    "nlohmann-json",
+    "crow",
+    "gtest"
+  ]
+}
