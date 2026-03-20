@@ -1,32 +1,39 @@
 {
-  "scene": "default",
-  "description": "Urban intersection — pedestrian + vehicle",
-  "update_rate_hz": 10,
-  "sensors": {
-    "camera": { "enabled": true, "range_m": 80, "fov_deg": 120 },
-    "radar":  { "enabled": true, "range_m": 150, "fov_deg": 60 },
-    "ultrasonic": { "enabled": true, "range_m": 5, "fov_deg": 180 }
-  },
-  "objects": [
+  "scenes": [
     {
-      "id": 1,
-      "label": "pedestrian",
-      "initial_x": 2.5,
-      "initial_y": 30.0,
-      "vx": 0.0,
-      "vy": -1.2,
-      "width": 0.6,
-      "length": 0.4
+      "name": "Day",
+      "video":      "data/videos/nD_1.mp4",
+      "detections": "data/detections/scene_day.json",
+      "condition":  "day"
     },
     {
-      "id": 2,
-      "label": "vehicle",
-      "initial_x": -1.0,
-      "initial_y": 60.0,
-      "vx": 0.5,
-      "vy": -8.0,
-      "width": 2.0,
-      "length": 4.5
+      "name": "Rain",
+      "video":      "data/videos/rD_2.mp4",
+      "detections": "data/detections/scene_rain.json",
+      "condition":  "rain"
+    },
+    {
+      "name": "Night",
+      "video":      "data/videos/nN_1.mp4",
+      "detections": "data/detections/scene_night.json",
+      "condition":  "night"
     }
-  ]
+  ],
+  "playback": {
+    "default_scene": 0,
+    "loop": true
+  },
+  "threat": {
+    "ttc_warning_threshold_s":  4.0,
+    "ttc_critical_threshold_s": 2.0,
+    "lateral_warning_m":  1.5,
+    "lateral_critical_m": 0.8
+  },
+  "display": {
+    "window_width":  1600,
+    "window_height": 900,
+    "video_panel_ratio": 0.65,
+    "show_bev": true,
+    "show_track_table": true
+  }
 }

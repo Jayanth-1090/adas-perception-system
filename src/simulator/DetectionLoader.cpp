@@ -128,6 +128,17 @@ Detection DetectionLoader::parseDetection(const nlohmann::json& j) const {
     d.vx = 0.0f;
     d.vy = 0.0f;
 
+    // Store original pixel bbox for accurate video overlay
+    if (j.contains("bbox_px") && j["bbox_px"].is_array() &&
+        j["bbox_px"].size() == 4) {
+        d.bbox_x1 = j["bbox_px"][0].get<int>();
+        d.bbox_y1 = j["bbox_px"][1].get<int>();
+        d.bbox_x2 = j["bbox_px"][2].get<int>();
+        d.bbox_y2 = j["bbox_px"][3].get<int>();
+    }
+    d.src_frame_w = meta_.frame_width;
+    d.src_frame_h = meta_.frame_height;
+
     // Physical size — convert pixel dimensions to approximate meters
     // using the same pinhole model: size_m = (size_px / height_px) * distance_m
     float height_px = j.value("height_px", 1.0f);
