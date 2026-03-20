@@ -15,7 +15,7 @@ include_directories(include)
 
 # ── Simulator library ──────────────────────────────────────────
 add_library(simulator_lib
-  src/simulator/SensorSimulator.cpp
+  src/simulator/DetectionLoader.cpp
 )
 target_link_libraries(simulator_lib
   PRIVATE spdlog::spdlog nlohmann_json::nlohmann_json
