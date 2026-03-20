@@ -1,42 +1,50 @@
 #include "simulator/DetectionLoader.hpp"
+#include "fusion/KalmanTracker.hpp"
 #include <spdlog/spdlog.h>
-#include <iostream>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
+void runScene(const std::string& path, const std::string& name) {
+    spdlog::info("========================================");
+    spdlog::info("Scene: {}", name);
+    spdlog::info("========================================");
+
+    adas::DetectionLoader loader(path);
+    adas::KalmanTracker   tracker;
+
+    const float dt = 0.1f;
+    int frame = 0;
+    int total_confirmed = 0;
+    uint32_t max_simultaneous = 0;
+
+    while (loader.hasNext()) {
+        auto detections = loader.nextFrame();
+        auto fused      = tracker.update(detections, dt);
+
+        total_confirmed += static_cast<int>(fused.size());
+        max_simultaneous = std::max(max_simultaneous,
+                                    static_cast<uint32_t>(fused.size()));
+        ++frame;
+    }
+
+    spdlog::info("Frames processed   : {}", frame);
+    spdlog::info("Total track outputs : {}", total_confirmed);
+    spdlog::info("Max simultaneous    : {}", max_simultaneous);
+    spdlog::info("Active tracks end   : {}", tracker.tracks().size());
+    spdlog::info("");
+}
 
 int main() {
+    auto logger = spdlog::stdout_color_mt("adas");
+    spdlog::set_default_logger(logger);
     spdlog::set_level(spdlog::level::info);
-    spdlog::info("ADAS Perception Simulator starting...");
 
     try {
-        // Load the day scene
-        adas::DetectionLoader loader("data/detections/scene_day.json");
-
-        spdlog::info("Scene    : {}", loader.meta().scene);
-        spdlog::info("Source   : {}", loader.meta().source_video);
-        spdlog::info("Frames   : {}", loader.totalFrames());
-        spdlog::info("Model    : {}", loader.meta().model);
-
-        // Walk through first 5 frames
-        int frame_count = 0;
-        while (loader.hasNext() && frame_count < 5) {
-            int64_t ts = loader.peekTimestamp();
-            auto detections = loader.nextFrame();
-
-            spdlog::info("Frame {:3d} | t={}ms | detections={}",
-                         frame_count, ts, detections.size());
-
-            for (const auto& d : detections) {
-                spdlog::info("  [{:>12s}] id={:4d} | dist={:5.1f}m | lat={:+.2f}m | conf={:.2f}",
-                             d.label, d.id, d.y, d.x, d.confidence);
-            }
-            ++frame_count;
-        }
-
-        spdlog::info("DetectionLoader OK");
-
+        runScene("data/detections/scene_day.json",   "DAY   (nD_1.mp4)");
+        runScene("data/detections/scene_rain.json",  "RAIN  (rD_2.mp4)");
+        runScene("data/detections/scene_night.json", "NIGHT (nN_1.mp4)");
     } catch (const std::exception& e) {
         spdlog::error("Fatal: {}", e.what());
         return 1;
     }
-
     return 0;
 }

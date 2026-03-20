@@ -23,7 +23,7 @@ target_link_libraries(simulator_lib
 
 # ── Fusion library ─────────────────────────────────────────────
 add_library(fusion_lib
-  src/fusion/FusionEngine.cpp
+  src/fusion/FusionEngine.cpp src/fusion/HungarianAssigner.cpp
 )
 target_link_libraries(fusion_lib
   PRIVATE simulator_lib spdlog::spdlog
