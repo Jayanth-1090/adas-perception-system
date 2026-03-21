@@ -9,3 +9,9 @@ frontend/.next/
 .env
 yolov8n.pt
 venv/
+data/
+scripts/generate_*.py
+scripts/reextract_*.py
+frontend/AGENTS.md
+frontend/CLAUDE.md
+next.config.ts

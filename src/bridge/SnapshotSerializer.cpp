@@ -30,21 +30,19 @@ nlohmann::json SnapshotSerializer::toJson(const SystemSnapshot& snap) {
 }
 
 nlohmann::json SnapshotSerializer::serializeDetection(const Detection& d) {
+    // Send only what the dashboard overlay needs — keep payload small
     return {
-        {"id",           d.id},
-        {"label",        d.label},
-        {"confidence",   d.confidence},
-        {"x",            d.x},
-        {"y",            d.y},
-        {"vx",           d.vx},
-        {"vy",           d.vy},
-        {"bbox_x1",      d.bbox_x1},
-        {"bbox_y1",      d.bbox_y1},
-        {"bbox_x2",      d.bbox_x2},
-        {"bbox_y2",      d.bbox_y2},
-        {"src_frame_w",  d.src_frame_w},
-        {"src_frame_h",  d.src_frame_h},
-        {"sensor",       sensorToString(d.sensor)},
+        {"id",          d.id},
+        {"label",       d.label},
+        {"confidence",  d.confidence},
+        {"x",           d.x},
+        {"y",           d.y},
+        {"bbox_x1",     d.bbox_x1},
+        {"bbox_y1",     d.bbox_y1},
+        {"bbox_x2",     d.bbox_x2},
+        {"bbox_y2",     d.bbox_y2},
+        {"src_frame_w", d.src_frame_w},
+        {"src_frame_h", d.src_frame_h},
     };
 }
 

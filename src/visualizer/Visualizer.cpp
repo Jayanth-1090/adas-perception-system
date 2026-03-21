@@ -109,17 +109,45 @@ void Visualizer::drawDetections(cv::Mat& frame,
         if (it != threat_map.end()) lvl = it->second;
         auto col = threatColorByLevel(lvl);
 
-        // Find best matching raw detection by label + distance proximity
+        // Match raw detection to fused track
+        // Strategy 1: exact label + proximity match
+        // Strategy 2: if only one detection of this label, use it directly
+        // Strategy 3: use closest by distance regardless (large threshold)
         const adas::Detection* best = nullptr;
-        float best_dist = 5.0f; // max 5m world-space distance to match
+        float best_dist = 999.f;
+
+        // Count detections with same label
+        int same_label_count = 0;
+        for (const auto& d : snapshot.raw_detections)
+            if (d.label == obj.label) same_label_count++;
+
         for (const auto& d : snapshot.raw_detections) {
             if (d.label != obj.label) continue;
+            // If only one detection of this label — use it directly
+            if (same_label_count == 1) {
+                best = &d;
+                break;
+            }
+            // Multiple same-label detections — pick closest by world dist
             float dx = d.x - obj.x;
             float dy = d.y - obj.y;
             float dist = std::sqrt(dx*dx + dy*dy);
             if (dist < best_dist) {
                 best_dist = dist;
                 best = &d;
+            }
+        }
+
+        // Last resort: if no label match, use closest detection overall
+        if (!best && !snapshot.raw_detections.empty()) {
+            for (const auto& d : snapshot.raw_detections) {
+                float dx = d.x - obj.x;
+                float dy = d.y - obj.y;
+                float dist = std::sqrt(dx*dx + dy*dy);
+                if (dist < best_dist) {
+                    best_dist = dist;
+                    best = &d;
+                }
             }
         }
 

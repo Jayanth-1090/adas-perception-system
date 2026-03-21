@@ -1,6 +1,5 @@
 #pragma once
 #include "common/Types.hpp"
-#include <vector>
 
 namespace adas {
 
@@ -14,14 +13,10 @@ struct ThreatConfig {
 class ThreatClassifier {
 public:
     explicit ThreatClassifier(const ThreatConfig& cfg = {});
-
-    // Classify each fused object — returns per-object assessments
-    // and sets overall_threat on the snapshot
     void classify(SystemSnapshot& snapshot);
 
 private:
     ThreatConfig cfg_;
-
     ThreatAssessment assessObject(const FusedObject& obj) const;
     static std::string levelToString(ThreatLevel l);
 };

@@ -21,7 +21,8 @@ class ScenePlayer {
 public:
     ScenePlayer(const SceneConfig& cfg,
                 const ThreatConfig& threat_cfg = {},
-                int ws_port = 9002);
+                int ws_port = 9002,
+                bool headless = false);
 
     void run();
 
@@ -29,6 +30,7 @@ private:
     SceneConfig      cfg_;
     ThreatConfig     threat_cfg_;
     int              ws_port_;
+    bool             headless_;
     PlaybackState    state_ = PlaybackState::PLAYING;
     int              frame_idx_ = 0;
 
@@ -37,3 +39,4 @@ private:
 };
 
 } // namespace adas
+// headless mode added below

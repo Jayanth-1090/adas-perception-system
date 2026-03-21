@@ -12,6 +12,9 @@ int main(int argc, char** argv) {
 
     int scene_idx = (argc > 1) ? std::atoi(argv[1]) : 0;
     int ws_port   = (argc > 2) ? std::atoi(argv[2]) : 9002;
+    bool headless = false;
+    for (int i = 1; i < argc; ++i)
+        if (std::string(argv[i]) == "--headless") headless = true;
 
     const std::vector<adas::SceneConfig> scenes = {
         {"DAY",   "data/videos/nD_1.mp4", "data/detections/scene_day.json"},
@@ -32,7 +35,7 @@ int main(int argc, char** argv) {
     threat_cfg.lat_critical_m = 0.8f;
 
     try {
-        adas::ScenePlayer player(scenes[scene_idx], threat_cfg, ws_port);
+        adas::ScenePlayer player(scenes[scene_idx], threat_cfg, ws_port, headless);
         player.run();
     } catch (const std::exception& e) {
         spdlog::error("Fatal: {}", e.what());

@@ -9,20 +9,26 @@ namespace adas {
 
 ScenePlayer::ScenePlayer(const SceneConfig& cfg,
                          const ThreatConfig& threat_cfg,
-                         int ws_port)
-    : cfg_(cfg), threat_cfg_(threat_cfg), ws_port_(ws_port) {}
+                         int ws_port,
+                         bool headless)
+    : cfg_(cfg), threat_cfg_(threat_cfg),
+      ws_port_(ws_port), headless_(headless) {}
 
 void ScenePlayer::run() {
     DetectionLoader  loader(cfg_.detection_path);
     VideoReader      video(cfg_.video_path);
     KalmanTracker    tracker;
     ThreatClassifier classifier(threat_cfg_);
-    Visualizer       viz(1600, 900);
+
+    // Only create visualizer when NOT headless
+    std::unique_ptr<Visualizer> viz;
+    if (!headless_) {
+        viz = std::make_unique<Visualizer>(1600, 900);
+    }
 
     const int   total_frames = static_cast<int>(loader.totalFrames());
     const float dt           = 1.0f / loader.meta().target_fps;
 
-    // ── Start WebSocket bridge ─────────────────────────────────
     BridgeConfig bridge_cfg;
     bridge_cfg.port         = ws_port_;
     bridge_cfg.scene_name   = cfg_.name;
@@ -38,14 +44,37 @@ void ScenePlayer::run() {
     spdlog::info("Dashboard:   http://localhost:{}/info", ws_port_);
     spdlog::info("WebSocket:   ws://localhost:{}/ws",     ws_port_);
 
-    while (!viz.windowClosed()) {
+    bool running = true;
+    (void)running; // suppress unused warning
+    while (true) {
+        // Check window closed (only in GUI mode)
+        if (!headless_ && viz && viz->windowClosed()) {
+            spdlog::info("Window closed — exiting");
+            break;
+        }
+        // Also check if display was lost (XLaunch killed)
+        if (!headless_ && cv::getWindowProperty(
+                "ADAS Perception Simulator",
+                cv::WND_PROP_VISIBLE) < 0) break;
 
+        // Emergency exit check — poll escape key directly
+        if (!headless_) {
+            int k = cv::pollKey();
+            if (k != -1) handleKey(k);
+        }
+
+        // Handle pause
         if (state_ == PlaybackState::PAUSED) {
-            int key = cv::waitKey(30);
-            handleKey(key);
+            if (!headless_ && viz) {
+                int key = cv::waitKey(30);
+                handleKey(key);
+            } else {
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            }
             continue;
         }
 
+        // Loop scene
         if (!loader.hasNext()) {
             spdlog::info("ScenePlayer: looping");
             loader.reset();
@@ -56,8 +85,10 @@ void ScenePlayer::run() {
             continue;
         }
 
+        // Get timestamp
         int64_t ts_ms = loader.peekTimestamp();
 
+        // Get video frame
         cv::Mat video_frame;
         bool got = video.getFrameAt(ts_ms, video_frame);
         if (!got || video_frame.empty() ||
@@ -68,6 +99,7 @@ void ScenePlayer::run() {
             last_good_frame = video_frame.clone();
         }
 
+        // Run pipeline
         auto detections = loader.nextFrame();
         auto fused      = tracker.update(detections, dt);
 
@@ -77,14 +109,16 @@ void ScenePlayer::run() {
         snapshot.fused_objects  = fused;
         classifier.classify(snapshot);
 
-        // ── Broadcast to dashboard ─────────────────────────────
+        // Broadcast to dashboard
         bridge.broadcast(snapshot, frame_idx_);
 
-        // ── Render OpenCV window ───────────────────────────────
-        int key = viz.render(video_frame, snapshot,
-                             cfg_.name, frame_idx_,
-                             total_frames, state_);
-        handleKey(key);
+        // Render OpenCV window (GUI mode only)
+        if (!headless_ && viz) {
+            int key = viz->render(video_frame, snapshot,
+                                  cfg_.name, frame_idx_,
+                                  total_frames, state_);
+            handleKey(key);
+        }
 
         if (state_ == PlaybackState::STEPPING)
             state_ = PlaybackState::PAUSED;
@@ -106,7 +140,7 @@ void ScenePlayer::handleKey(int key) {
             state_ = (state_ == PlaybackState::PAUSED)
                      ? PlaybackState::PLAYING : PlaybackState::PAUSED;
             break;
-        case 's': case 'S': state_ = PlaybackState::STEPPING; break;
+        case 's': case 'S': state_ = PlaybackState::STEPPING;  break;
         case 'f': case 'F':
             state_ = (state_ == PlaybackState::FAST)
                      ? PlaybackState::PLAYING : PlaybackState::FAST;
@@ -115,15 +149,18 @@ void ScenePlayer::handleKey(int key) {
             state_ = (state_ == PlaybackState::SLOW)
                      ? PlaybackState::PLAYING : PlaybackState::SLOW;
             break;
-        case 'r': case 'R': state_ = PlaybackState::PLAYING; break;
-        case 'q': case 'Q': case 27: cv::destroyAllWindows(); break;
+        case 'r': case 'R': state_ = PlaybackState::PLAYING;   break;
+        case 'q': case 'Q': case 27:
+            if (!headless_) cv::destroyAllWindows();
+            ::exit(0);
+            break;
         default: break;
     }
 }
 
 int ScenePlayer::frameDelayMs() const {
     switch (state_) {
-        case PlaybackState::FAST: return 11;
+        case PlaybackState::FAST: return 33;
         case PlaybackState::SLOW: return 200;
         default:                  return 100;
     }
