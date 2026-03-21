@@ -41,7 +41,7 @@ target_link_libraries(threat_lib
 
 # ── Bridge ─────────────────────────────────────────────────────
 add_library(bridge_lib
-  src/bridge/WebSocketBridge.cpp
+  src/bridge/WebSocketBridge.cpp src/bridge/SnapshotSerializer.cpp
 )
 target_link_libraries(bridge_lib
   PRIVATE threat_lib Crow::Crow spdlog::spdlog

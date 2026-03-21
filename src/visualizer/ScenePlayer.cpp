@@ -1,4 +1,5 @@
 #include "visualizer/ScenePlayer.hpp"
+#include "bridge/WebSocketBridge.hpp"
 #include <opencv2/highgui.hpp>
 #include <spdlog/spdlog.h>
 #include <chrono>
@@ -7,8 +8,9 @@
 namespace adas {
 
 ScenePlayer::ScenePlayer(const SceneConfig& cfg,
-                         const ThreatConfig& threat_cfg)
-    : cfg_(cfg), threat_cfg_(threat_cfg) {}
+                         const ThreatConfig& threat_cfg,
+                         int ws_port)
+    : cfg_(cfg), threat_cfg_(threat_cfg), ws_port_(ws_port) {}
 
 void ScenePlayer::run() {
     DetectionLoader  loader(cfg_.detection_path);
@@ -20,24 +22,32 @@ void ScenePlayer::run() {
     const int   total_frames = static_cast<int>(loader.totalFrames());
     const float dt           = 1.0f / loader.meta().target_fps;
 
-    // Pre-load first valid frame as fallback
+    // ── Start WebSocket bridge ─────────────────────────────────
+    BridgeConfig bridge_cfg;
+    bridge_cfg.port         = ws_port_;
+    bridge_cfg.scene_name   = cfg_.name;
+    bridge_cfg.total_frames = total_frames;
+
+    WebSocketBridge bridge(bridge_cfg);
+    bridge.start();
+
     cv::Mat last_good_frame;
 
-    spdlog::info("ScenePlayer: starting '{}' | {} frames | dt={:.3f}s",
+    spdlog::info("ScenePlayer: '{}' | {} frames | dt={:.3f}s",
                  cfg_.name, total_frames, dt);
+    spdlog::info("Dashboard:   http://localhost:{}/info", ws_port_);
+    spdlog::info("WebSocket:   ws://localhost:{}/ws",     ws_port_);
 
     while (!viz.windowClosed()) {
 
-        // ── PAUSED ─────────────────────────────────────────────
         if (state_ == PlaybackState::PAUSED) {
             int key = cv::waitKey(30);
             handleKey(key);
             continue;
         }
 
-        // ── End of scene — loop ────────────────────────────────
         if (!loader.hasNext()) {
-            spdlog::info("ScenePlayer: scene complete, looping");
+            spdlog::info("ScenePlayer: looping");
             loader.reset();
             video.reset();
             tracker    = KalmanTracker();
@@ -46,15 +56,11 @@ void ScenePlayer::run() {
             continue;
         }
 
-        // ── Get timestamp BEFORE advancing loader ──────────────
         int64_t ts_ms = loader.peekTimestamp();
 
-        // ── Seek video to this timestamp ───────────────────────
         cv::Mat video_frame;
-        bool got_frame = video.getFrameAt(ts_ms, video_frame);
-
-        // Use last good frame if seek failed
-        if (!got_frame || video_frame.empty() ||
+        bool got = video.getFrameAt(ts_ms, video_frame);
+        if (!got || video_frame.empty() ||
             video_frame.rows <= 0 || video_frame.cols <= 0) {
             if (!last_good_frame.empty())
                 video_frame = last_good_frame.clone();
@@ -62,18 +68,19 @@ void ScenePlayer::run() {
             last_good_frame = video_frame.clone();
         }
 
-        // ── Advance detection loader + run pipeline ────────────
         auto detections = loader.nextFrame();
         auto fused      = tracker.update(detections, dt);
 
-        // ── Build snapshot ─────────────────────────────────────
         SystemSnapshot snapshot;
         snapshot.timestamp_ms   = ts_ms;
         snapshot.raw_detections = detections;
         snapshot.fused_objects  = fused;
         classifier.classify(snapshot);
 
-        // ── Render ─────────────────────────────────────────────
+        // ── Broadcast to dashboard ─────────────────────────────
+        bridge.broadcast(snapshot, frame_idx_);
+
+        // ── Render OpenCV window ───────────────────────────────
         int key = viz.render(video_frame, snapshot,
                              cfg_.name, frame_idx_,
                              total_frames, state_);
@@ -88,6 +95,7 @@ void ScenePlayer::run() {
             std::chrono::milliseconds(frameDelayMs()));
     }
 
+    bridge.stop();
     spdlog::info("ScenePlayer: exited");
 }
 
@@ -96,38 +104,26 @@ void ScenePlayer::handleKey(int key) {
     switch (key & 0xFF) {
         case ' ':
             state_ = (state_ == PlaybackState::PAUSED)
-                     ? PlaybackState::PLAYING
-                     : PlaybackState::PAUSED;
-            spdlog::info("Playback: {}",
-                state_ == PlaybackState::PAUSED ? "PAUSED" : "PLAYING");
+                     ? PlaybackState::PLAYING : PlaybackState::PAUSED;
             break;
-        case 's': case 'S':
-            state_ = PlaybackState::STEPPING;
-            break;
+        case 's': case 'S': state_ = PlaybackState::STEPPING; break;
         case 'f': case 'F':
             state_ = (state_ == PlaybackState::FAST)
                      ? PlaybackState::PLAYING : PlaybackState::FAST;
-            spdlog::info("Playback: FAST");
             break;
         case 'w': case 'W':
             state_ = (state_ == PlaybackState::SLOW)
                      ? PlaybackState::PLAYING : PlaybackState::SLOW;
-            spdlog::info("Playback: SLOW");
             break;
-        case 'r': case 'R':
-            spdlog::info("Playback: RESET");
-            state_ = PlaybackState::PLAYING;
-            break;
-        case 'q': case 'Q': case 27:
-            cv::destroyAllWindows();
-            break;
+        case 'r': case 'R': state_ = PlaybackState::PLAYING; break;
+        case 'q': case 'Q': case 27: cv::destroyAllWindows(); break;
         default: break;
     }
 }
 
 int ScenePlayer::frameDelayMs() const {
     switch (state_) {
-        case PlaybackState::FAST: return 33 / 3;
+        case PlaybackState::FAST: return 11;
         case PlaybackState::SLOW: return 200;
         default:                  return 100;
     }

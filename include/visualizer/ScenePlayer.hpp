@@ -5,6 +5,7 @@
 #include "fusion/KalmanTracker.hpp"
 #include "threat/ThreatClassifier.hpp"
 #include "visualizer/Visualizer.hpp"
+#include "bridge/WebSocketBridge.hpp"
 #include <string>
 #include <memory>
 
@@ -19,15 +20,15 @@ struct SceneConfig {
 class ScenePlayer {
 public:
     ScenePlayer(const SceneConfig& cfg,
-                const ThreatConfig& threat_cfg = {});
+                const ThreatConfig& threat_cfg = {},
+                int ws_port = 9002);
 
-    // Run the full playback loop — blocks until quit
     void run();
 
 private:
     SceneConfig      cfg_;
     ThreatConfig     threat_cfg_;
-
+    int              ws_port_;
     PlaybackState    state_ = PlaybackState::PLAYING;
     int              frame_idx_ = 0;
 
