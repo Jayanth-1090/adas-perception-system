@@ -19,7 +19,7 @@ struct SceneConfig {
 
 class ScenePlayer {
 public:
-    ScenePlayer(const SceneConfig& cfg,
+    ScenePlayer(const std::vector<SceneConfig>& scenes,
                 const ThreatConfig& threat_cfg = {},
                 int ws_port = 9002,
                 bool headless = false);
@@ -27,7 +27,8 @@ public:
     void run();
 
 private:
-    SceneConfig      cfg_;
+    std::vector<SceneConfig> scenes_;
+    int               current_scene_idx_ = 0;
     ThreatConfig     threat_cfg_;
     int              ws_port_;
     bool             headless_;

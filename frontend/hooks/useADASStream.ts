@@ -7,6 +7,7 @@ interface StreamState {
   connected:   boolean
   fps:         number
   error:       string | null
+  sendMessage: (msg: string) => void
 }
 
 export function useADASStream(url: string): StreamState {
@@ -35,10 +36,20 @@ export function useADASStream(url: string): StreamState {
         }, 2000)
       }
 
+      let lastUpdate = 0
       ws.onmessage = (e) => {
         try {
-          const data = JSON.parse(e.data) as SystemSnapshot
-          setSnapshot(data)
+          const now = Date.now()
+          // Skip event messages (scene_changed etc)
+          const data = JSON.parse(e.data)
+          if (data.event) return  // ignore event-only messages
+          // Throttle React state updates to 10fps max
+          if (now - lastUpdate < 80) {
+            frameCount.current++
+            return
+          }
+          lastUpdate = now
+          setSnapshot(data as SystemSnapshot)
           frameCount.current++
         } catch {}
       }
@@ -67,5 +78,10 @@ export function useADASStream(url: string): StreamState {
     }
   }, [connect])
 
-  return { snapshot, connected, fps, error }
+  const sendMessage = (msg: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN)
+      wsRef.current.send(msg)
+  }
+
+  return { snapshot, connected, fps, error, sendMessage }
 }

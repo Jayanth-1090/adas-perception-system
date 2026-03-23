@@ -35,7 +35,7 @@ int main(int argc, char** argv) {
     threat_cfg.lat_critical_m = 0.8f;
 
     try {
-        adas::ScenePlayer player(scenes[scene_idx], threat_cfg, ws_port, headless);
+        adas::ScenePlayer player(scenes, threat_cfg, ws_port, headless);
         player.run();
     } catch (const std::exception& e) {
         spdlog::error("Fatal: {}", e.what());

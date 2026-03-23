@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useEffect, useMemo } from 'react'
+import React, { useRef, useEffect, useMemo } from 'react'
 import { SystemSnapshot, FusedObject, ThreatAssessment } from '@/types/adas'
 import { threatHex } from '@/lib/threatColors'
 
@@ -11,7 +11,7 @@ interface Props {
   srcHeight?:  number
 }
 
-export default function DetectionOverlay({
+function DetectionOverlay({
   snapshot, videoWidth, videoHeight,
   srcWidth = 1920, srcHeight = 1080
 }: Props) {
@@ -37,11 +37,11 @@ export default function DetectionOverlay({
 
     // Build detection lookup by label + proximity
     const detMap = new Map<string, typeof snapshot.raw_detections[0]>()
-    for (const d of snapshot.raw_detections) {
+    for (const d of (snapshot.raw_detections ?? [])) {
       detMap.set(`${d.label}_${Math.round(d.y)}`, d)
     }
 
-    for (const obj of snapshot.fused_objects) {
+    for (const obj of (snapshot.fused_objects ?? [])) {
       const ta    = threatMap.get(obj.track_id)
       const level = ta?.level ?? 'SAFE'
       const color = threatHex[level]
@@ -58,7 +58,7 @@ export default function DetectionOverlay({
         found = true
       } else {
         let bestDist = 999
-        for (const d of snapshot.raw_detections) {
+        for (const d of (snapshot.raw_detections ?? [])) {
           if (d.label !== obj.label) continue
           const dist = Math.sqrt((d.x - obj.x)**2 + (d.y - obj.y)**2)
           if (dist < bestDist && d.bbox_x2 > d.bbox_x1) {
@@ -141,3 +141,5 @@ export default function DetectionOverlay({
     />
   )
 }
+
+export default React.memo(DetectionOverlay)

@@ -5,7 +5,7 @@ import { threatBadge, threatText } from '@/lib/threatColors'
 interface Props { snapshot: SystemSnapshot | null }
 
 export default function TrackTable({ snapshot }: Props) {
-  if (!snapshot || snapshot.fused_objects.length === 0) {
+  if (!snapshot || !snapshot.fused_objects || snapshot.fused_objects.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-600 text-sm font-mono">
         No active tracks
@@ -14,7 +14,7 @@ export default function TrackTable({ snapshot }: Props) {
   }
 
   const threatMap = new Map<number, ThreatAssessment>(
-    snapshot.threats.map(t => [t.track_id, t])
+    (snapshot.threats ?? []).map(t => [t.track_id, t])
   )
 
   return (
@@ -28,7 +28,7 @@ export default function TrackTable({ snapshot }: Props) {
           </tr>
         </thead>
         <tbody>
-          {snapshot.fused_objects.map((obj, i) => {
+          {(snapshot.fused_objects ?? []).map((obj, i) => {
             const ta     = threatMap.get(obj.track_id)
             const level  = ta?.level ?? 'SAFE'
             const ttc    = ta?.ttc ?? -1

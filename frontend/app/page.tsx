@@ -16,7 +16,13 @@ const SCENES = [
 ]
 
 export default function Dashboard() {
-  const { snapshot, connected, fps, error } = useADASStream(WS_URL)
+  const { snapshot, connected, fps, error, sendMessage } = useADASStream(WS_URL)
+  const [activeSceneIdx, setActiveSceneIdx] = useState(0)
+
+  const switchScene = (idx: number) => {
+    setActiveSceneIdx(idx)
+    sendMessage(JSON.stringify({ cmd: 'switch_scene', scene: idx }))
+  }
   const videoRef = useRef<HTMLVideoElement>(null)
   const [vidSize, setVidSize] = useState({ w: 960, h: 540 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -52,7 +58,9 @@ export default function Dashboard() {
     return () => obs.disconnect()
   }, [])
 
-  const currentScene = SCENES.find(s => s.name === snapshot?.scene) ?? SCENES[0]
+  const currentScene = SCENES[activeSceneIdx] ?? SCENES[0]
+
+
 
   return (
     <div className="flex flex-col h-screen bg-gray-950 text-white overflow-hidden">
@@ -71,7 +79,7 @@ export default function Dashboard() {
       </div>
 
       {/* Status bar */}
-      <StatusBar snapshot={snapshot} connected={connected} fps={fps} />
+      <StatusBar snapshot={snapshot} connected={connected} fps={fps} onSceneSwitch={switchScene} activeSceneIdx={activeSceneIdx} />
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
@@ -83,6 +91,7 @@ export default function Dashboard() {
           <div ref={containerRef}
                className="relative flex-1 bg-black overflow-hidden">
             <video
+              key={currentScene.file}
               ref={videoRef}
               src={currentScene.file}
               className="w-full h-full object-contain"
@@ -90,7 +99,6 @@ export default function Dashboard() {
               playsInline
               preload="auto"
               onLoadedData={() => {
-                // Video ready — sync will start on next snapshot
                 const v = videoRef.current
                 if (v) v.pause()
               }}
@@ -99,8 +107,8 @@ export default function Dashboard() {
               snapshot={snapshot}
               videoWidth={vidSize.w}
               videoHeight={vidSize.h}
-              srcWidth={snapshot?.raw_detections[0]?.src_frame_w ?? 1920}
-              srcHeight={snapshot?.raw_detections[0]?.src_frame_h ?? 1080}
+              srcWidth={snapshot?.raw_detections?.[0]?.src_frame_w ?? 1920}
+              srcHeight={snapshot?.raw_detections?.[0]?.src_frame_h ?? 1080}
             />
 
             {/* Overlay: no connection */}

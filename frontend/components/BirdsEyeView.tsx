@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { SystemSnapshot, FusedObject, ThreatAssessment } from '@/types/adas'
 import { threatHex } from '@/lib/threatColors'
 
@@ -17,7 +17,7 @@ function worldToPixel(x: number, y: number, w: number, h: number) {
   return { px, py }
 }
 
-export default function BirdsEyeView({ snapshot, width = 380, height = 460 }: Props) {
+function BirdsEyeView({ snapshot, width = 380, height = 460 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -79,11 +79,11 @@ export default function BirdsEyeView({ snapshot, width = 380, height = 460 }: Pr
 
     // Build threat map
     const threatMap = new Map<number, ThreatAssessment>(
-      snapshot.threats.map(t => [t.track_id, t])
+      (snapshot?.threats ?? []).map(t => [t.track_id, t])
     )
 
     // Draw tracked objects
-    for (const obj of snapshot.fused_objects) {
+    for (const obj of (snapshot.fused_objects ?? [])) {
       const ta    = threatMap.get(obj.track_id)
       const level = ta?.level ?? 'SAFE'
       const color = threatHex[level]
@@ -147,3 +147,5 @@ export default function BirdsEyeView({ snapshot, width = 380, height = 460 }: Pr
     />
   )
 }
+
+export default React.memo(BirdsEyeView)

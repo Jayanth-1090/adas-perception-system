@@ -48,8 +48,16 @@ void WebSocketBridge::start() {
             std::lock_guard<std::mutex> lk(impl_->clients_mutex);
             impl_->clients.erase(&conn);
         })
-        .onmessage([](crow::websocket::connection&,
-                      const std::string&, bool) {});
+        .onmessage([this](crow::websocket::connection&,
+                       const std::string& msg, bool) {
+            try {
+                auto j = nlohmann::json::parse(msg);
+                if (j.value("cmd","") == "switch_scene") {
+                    int idx = j.value("scene", -1);
+                    if (idx >= 0) pending_scene_.store(idx);
+                }
+            } catch (...) {}
+        });
 
     CROW_ROUTE(impl_->app, "/info")
     ([this]() {
@@ -130,6 +138,18 @@ int WebSocketBridge::clientCount() const {
     std::lock_guard<std::mutex> lk(
         const_cast<std::mutex&>(impl_->clients_mutex));
     return static_cast<int>(impl_->clients.size());
+}
+
+int WebSocketBridge::pendingSceneSwitch() {
+    return pending_scene_.exchange(-1);
+}
+
+void WebSocketBridge::sendEvent(const std::string& event_json) {
+    std::lock_guard<std::mutex> lk(impl_->clients_mutex);
+    for (auto* conn : impl_->clients) {
+        try { conn->send_text(event_json); }
+        catch (...) {}
+    }
 }
 
 } // namespace adas

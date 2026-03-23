@@ -36,6 +36,12 @@ public:
     bool isRunning() const { return running_; }
     int  clientCount() const;
 
+    // Returns -1 if no pending scene switch, otherwise scene index
+    int  pendingSceneSwitch();
+
+    // Send event to all clients
+    void sendEvent(const std::string& event_json);
+
 private:
     BridgeConfig        cfg_;
     std::atomic<bool>   running_{false};
@@ -45,6 +51,7 @@ private:
     std::mutex          snapshot_mutex_;
     std::string         latest_snapshot_;
     std::atomic<int>    frame_idx_{0};
+    std::atomic<int>    pending_scene_{-1};
 
     // Crow app lives on heap to avoid heavy include in header
     struct Impl;
