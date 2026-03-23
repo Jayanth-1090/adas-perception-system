@@ -1,4 +1,5 @@
 #include "bridge/SnapshotSerializer.hpp"
+#include "common/Types.hpp"
 
 namespace adas {
 
@@ -7,6 +8,7 @@ nlohmann::json SnapshotSerializer::toJson(const SystemSnapshot& snap) {
 
     j["timestamp_ms"]   = snap.timestamp_ms;
     j["overall_threat"] = snap.overall_threat;
+
 
     // Raw detections
     nlohmann::json dets = nlohmann::json::array();
